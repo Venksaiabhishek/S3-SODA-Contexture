@@ -35,7 +35,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	if r.Method == http.MethodPost {
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			if ws.aiAgent != nil {
-				ws.aiAgent.Logger.WithError(err).Error("Failed to parse deletion plan request")
+				ws.logger.WithError(err).Error("Failed to parse deletion plan request")
 			}
 			http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
 			return
@@ -43,7 +43,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	if ws.aiAgent != nil {
-		ws.aiAgent.Logger.WithFields(map[string]interface{}{
+		ws.logger.WithFields(map[string]interface{}{
 			"resource_ids":  request.ResourceIDs,
 			"resource_type": request.ResourceType,
 		}).Info("Generating deletion plan")
@@ -53,7 +53,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	stateFilePath := ws.config.GetStateFilePath()
 	if stateFilePath == "" {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.Error("State file path not configured")
+			ws.logger.Error("State file path not configured")
 		}
 		http.Error(w, `{"error": "State file path not configured"}`, http.StatusInternalServerError)
 		return
@@ -63,7 +63,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	data, err := os.ReadFile(stateFilePath)
 	if err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to read state file")
+			ws.logger.WithError(err).Error("Failed to read state file")
 		}
 		http.Error(w, `{"error": "Failed to read state file"}`, http.StatusInternalServerError)
 		return
@@ -73,7 +73,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	var state types.InfrastructureState
 	if err := json.Unmarshal(data, &state); err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to parse state JSON")
+			ws.logger.WithError(err).Error("Failed to parse state JSON")
 		}
 		http.Error(w, `{"error": "Failed to parse state"}`, http.StatusInternalServerError)
 		return
@@ -96,7 +96,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	// Build dependency graph
 	var logger *logging.Logger
 	if ws.aiAgent != nil {
-		logger = ws.aiAgent.Logger
+		logger = ws.logger
 	}
 	graphManager := graph.NewManager(logger)
 	var resourceList []*types.ResourceState
@@ -106,7 +106,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := graphManager.BuildGraph(ctx, resourceList); err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to build dependency graph")
+			ws.logger.WithError(err).Error("Failed to build dependency graph")
 		}
 		http.Error(w, `{"error": "Failed to build dependency graph"}`, http.StatusInternalServerError)
 		return
@@ -120,7 +120,7 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		// Circular dependency detected - break the cycle and provide safe ordering
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Warn("Circular dependencies detected, breaking cycles automatically")
+			ws.logger.WithError(err).Warn("Circular dependencies detected, breaking cycles automatically")
 		}
 
 		// Get deletion order with circular dependency handling
@@ -180,14 +180,14 @@ func (ws *WebServer) getDeletionPlanHandler(w http.ResponseWriter, r *http.Reque
 	// Return the deletion plan
 	if err := json.NewEncoder(w).Encode(deletionPlan); err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to encode deletion plan response")
+			ws.logger.WithError(err).Error("Failed to encode deletion plan response")
 		}
 		http.Error(w, `{"error": "Failed to generate response"}`, http.StatusInternalServerError)
 		return
 	}
 
 	if ws.aiAgent != nil {
-		ws.aiAgent.Logger.WithField("total_resources", deletionPlan.TotalResources).
+		ws.logger.WithField("total_resources", deletionPlan.TotalResources).
 			Info("Deletion plan generated successfully")
 	}
 }
@@ -447,14 +447,14 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 	}
 
 	if ws.aiAgent != nil {
-		ws.aiAgent.Logger.Info("Cleaning resource properties in state file")
+		ws.logger.Info("Cleaning resource properties in state file")
 	}
 
 	// Get the state file path from config
 	stateFilePath := ws.config.GetStateFilePath()
 	if stateFilePath == "" {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.Error("State file path not configured")
+			ws.logger.Error("State file path not configured")
 		}
 		http.Error(w, `{"error": "State file path not configured"}`, http.StatusInternalServerError)
 		return
@@ -463,7 +463,7 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 	// Read the current state file
 	data, err := os.ReadFile(stateFilePath)
 	if err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to read state file")
+		ws.logger.WithError(err).Error("Failed to read state file")
 		http.Error(w, `{"error": "Failed to read state file"}`, http.StatusInternalServerError)
 		return
 	}
@@ -471,7 +471,7 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 	// Parse the state
 	var state types.InfrastructureState
 	if err := json.Unmarshal(data, &state); err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to parse state file")
+		ws.logger.WithError(err).Error("Failed to parse state file")
 		http.Error(w, `{"error": "Failed to parse state file"}`, http.StatusInternalServerError)
 		return
 	}
@@ -488,7 +488,7 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 	cleanedData, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to marshal cleaned state")
+			ws.logger.WithError(err).Error("Failed to marshal cleaned state")
 		}
 		http.Error(w, `{"error": "Failed to marshal cleaned state"}`, http.StatusInternalServerError)
 		return
@@ -498,7 +498,7 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 	tempFile := stateFilePath + ".tmp"
 	if err := os.WriteFile(tempFile, cleanedData, 0644); err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to write temporary state file")
+			ws.logger.WithError(err).Error("Failed to write temporary state file")
 		}
 		http.Error(w, `{"error": "Failed to write temporary state file"}`, http.StatusInternalServerError)
 		return
@@ -506,14 +506,14 @@ func (ws *WebServer) cleanResourcePropertiesHandler(w http.ResponseWriter, r *ht
 
 	if err := os.Rename(tempFile, stateFilePath); err != nil {
 		if ws.aiAgent != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to rename temporary state file")
+			ws.logger.WithError(err).Error("Failed to rename temporary state file")
 		}
 		http.Error(w, `{"error": "Failed to rename temporary state file"}`, http.StatusInternalServerError)
 		return
 	}
 
 	if ws.aiAgent != nil {
-		ws.aiAgent.Logger.WithFields(map[string]interface{}{
+		ws.logger.WithFields(map[string]interface{}{
 			"total_resources": totalResources,
 		}).Info("Successfully cleaned all resources")
 	}

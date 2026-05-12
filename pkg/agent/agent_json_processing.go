@@ -175,18 +175,30 @@ func (a *StateAwareAgent) attemptTruncatedJSONParse(response string) string {
 		return ""
 	}
 
-	// Try to parse as-is first
+	// ALWAYS check if response is already valid (LLM might have output text BEFORE JSON)
 	if a.isValidJSON(response) {
 		return response
 	}
 
+	// Try extracting first if it's not valid as a whole string
+	extracted := a.extractJSON(response)
+	if extracted != "" {
+		return extracted
+	}
+
 	// If response appears truncated, try to complete it minimally
-	// Look for common truncation patterns
+	// BUT ONLY if it hasn't cut off inside a key name or a critical field
 	truncatedResponse := strings.TrimSpace(response)
 
-	// If it ends with a quote but no closing brace, it might be truncated mid-string
+	// If it ends mid-key or mid-value (like "confid) don't even try to fix it
+	if strings.HasSuffix(truncatedResponse, "\"") || strings.HasSuffix(truncatedResponse, ":") {
+		a.Logger.Warn("JSON truncated at critical position, refusing to auto-complete")
+		return ""
+	}
+
+	// If it ends with a quote but no closing brace, it might be truncated mid-value
+	// We'll try to close it, but it's risky
 	if strings.HasSuffix(truncatedResponse, "\"") {
-		// Try adding closing quote and braces
 		completed := truncatedResponse + "\"}}}"
 		if a.isValidJSON(completed) {
 			a.Logger.Info("Successfully completed truncated JSON response")
@@ -196,7 +208,6 @@ func (a *StateAwareAgent) attemptTruncatedJSONParse(response string) string {
 
 	// If it ends without proper closure, try adding closing braces
 	if !strings.HasSuffix(truncatedResponse, "}") {
-		// Count open braces and try to close them
 		openBraces := strings.Count(truncatedResponse, "{") - strings.Count(truncatedResponse, "}")
 		if openBraces > 0 {
 			completed := truncatedResponse + strings.Repeat("}", openBraces)
@@ -213,6 +224,8 @@ func (a *StateAwareAgent) attemptTruncatedJSONParse(response string) string {
 		a.Logger.Info("Found last valid JSON portion from truncated response")
 		return lastValidJson
 	}
+
+	return ""
 
 	return ""
 }
@@ -277,4 +290,43 @@ func (a *StateAwareAgent) cleanJSONComments(jsonStr string) string {
 	}
 
 	return strings.Join(cleanedLines, "\n")
+}
+
+// stripChainOfThought removes chain-of-thought reasoning text that some model
+// variants (e.g., Gemini Flash with thinking enabled) prepend before JSON output.
+// It detects patterns like "Wait, I'll check..." or "Let me analyze..." and strips
+// everything before the first '{' character.
+func (a *StateAwareAgent) stripChainOfThought(response string) string {
+	trimmed := strings.TrimSpace(response)
+
+	// If the response already starts with '{', no stripping needed
+	if strings.HasPrefix(trimmed, "{") {
+		return trimmed
+	}
+
+	// Look for the first '{' which marks the start of the JSON object
+	jsonStart := strings.Index(trimmed, "{")
+	if jsonStart == -1 {
+		// No JSON found at all — return as-is and let downstream handle the error
+		a.Logger.Warn("No JSON object found in LLM response - model may have returned pure reasoning text")
+		return response
+	}
+
+	// Extract from the first '{' onward
+	stripped := trimmed[jsonStart:]
+
+	a.Logger.WithFields(map[string]interface{}{
+		"original_length":  len(response),
+		"stripped_length":  len(stripped),
+		"reasoning_length": jsonStart,
+		"reasoning_preview": func() string {
+			preview := trimmed[:jsonStart]
+			if len(preview) > 200 {
+				preview = preview[:200] + "..."
+			}
+			return preview
+		}(),
+	}).Warn("Stripped chain-of-thought reasoning from LLM response before JSON extraction")
+
+	return stripped
 }

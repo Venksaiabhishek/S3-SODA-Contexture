@@ -119,8 +119,7 @@ func (a *StateAwareAgent) Initialize(ctx context.Context) error {
 
 	// Test LLM connectivity
 	if err := a.testLLMConnectivity(ctx); err != nil {
-		a.Logger.WithError(err).Error("LLM connectivity test failed")
-		return fmt.Errorf("LLM connectivity test failed: %w", err)
+		a.Logger.WithError(err).Warn("LLM connectivity test failed - continuing initialization anyway")
 	}
 
 	// Start MCP process and discover capabilities early

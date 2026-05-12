@@ -65,7 +65,9 @@ func (a *StateAwareAgent) extractResourceIDFromResponse(result map[string]interf
 	// Use configuration-driven extraction for primary resource ID
 	resourceType := a.patternMatcher.IdentifyResourceTypeFromToolName(toolName)
 	if resourceType == "" || resourceType == "unknown" {
-		return "", fmt.Errorf("could not identify resource type for tool %s", toolName)
+		// Log but don't error immediately - let the extractor try anyway or return empty if it's a query tool
+		a.Logger.WithField("tool_name", toolName).Debug("No specific resource type identified for extraction")
+		resourceType = "unknown"
 	}
 
 	extractedID, err := a.idExtractor.ExtractResourceID(toolName, resourceType, nil, result)

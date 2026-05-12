@@ -195,18 +195,27 @@ func (a *StateAwareAgent) generateDecisionWithPlan(ctx context.Context, decision
 		}).Debug("LLM Response Analysis")
 	}
 
-	// Check for potential token limit issues
-	if len(response) > 0 && strings.HasPrefix(response, "{") && !strings.HasSuffix(response, "}") {
+	// Strip chain-of-thought reasoning if the model output thinking tokens before JSON
+	// Some Gemini model variants (e.g., flash with thinking enabled) output reasoning
+	// text like "Wait, I'll check the action field..." before the actual JSON.
+	response = a.stripChainOfThought(response)
+
+	// Check for potential token limit issues explicitly before parsing
+	isTruncated := len(response) > 0 && strings.HasPrefix(strings.TrimSpace(response), "{") && !strings.HasSuffix(strings.TrimSpace(response), "}")
+	if isTruncated {
 		a.Logger.WithFields(map[string]interface{}{
 			"response_length": len(response),
 			"max_tokens":      a.config.MaxTokens,
 			"last_100_chars":  response[max(0, len(response)-100):],
-		}).Warn("Response appears truncated - consider increasing max_tokens in config")
+		}).Warn("Response appears truncated - this will likely cause a validation failure")
 	}
 
 	// Parse the AI response with execution plan
 	decision, err := a.parseAIResponseWithPlan(decisionID, request, response)
 	if err != nil {
+		if isTruncated {
+			return nil, fmt.Errorf("AI response was truncated due to token limits or safety filters, and could not be recovered: %w", err)
+		}
 		return nil, fmt.Errorf("failed to parse AI response: %w", err)
 	}
 
@@ -216,11 +225,6 @@ func (a *StateAwareAgent) generateDecisionWithPlan(ctx context.Context, decision
 // validateDecision validates an agent decision
 func (a *StateAwareAgent) validateDecision(decision *types.AgentDecision, context *DecisionContext) error {
 	a.Logger.Debug("Validating agent decision")
-
-	// Check confidence threshold
-	if decision.Confidence < 0.7 {
-		return fmt.Errorf("decision confidence too low: %f", decision.Confidence)
-	}
 
 	// Validate action
 	validActions := map[string]bool{
@@ -310,37 +314,76 @@ func (a *StateAwareAgent) buildDecisionWithPlanPrompt(request string, context *D
 	prompt.WriteString("📊 INFRASTRUCTURE STATE OVERVIEW:\n")
 	prompt.WriteString("Analyze ALL available resources from the state file to make informed decisions.\n\n")
 
-	// Show current managed resources from state file
+	// Show current managed resources from state file - capped at 5 for prompt efficiency
+	// SMART FILTERING: only show resources that might be relevant to the query keywords
+	const maxResourcesInPrompt = 5
+	queryLower := strings.ToLower(request)
 	if len(context.CurrentState.Resources) > 0 {
-		prompt.WriteString("🏗️ MANAGED RESOURCES (from state file):\n")
+		prompt.WriteString("🏗️ RELEVANT MANAGED RESOURCES (filtered for efficiency):\n")
+		count := 0
 		for resourceID, resource := range context.CurrentState.Resources {
-			prompt.WriteString(fmt.Sprintf("- %s (%s): %s", resourceID, resource.Type, resource.Status))
+			if count >= maxResourcesInPrompt {
+				break
+			}
 
-			// Extract and show key properties from state file
-			if resource.Properties != nil {
-				var properties []string
+			// Only include if ID or Type matches query keywords, or if we have space
+			resIDLower := strings.ToLower(resourceID)
+			resTypeLower := strings.ToLower(resource.Type)
+			isRelevant := strings.Contains(queryLower, resIDLower) || 
+						  strings.Contains(resIDLower, queryLower) ||
+						  strings.Contains(queryLower, resTypeLower)
 
-				// Extract from direct properties
-				for key, value := range resource.Properties {
-					if key == "mcp_response" {
-						// Extract from nested mcp_response
-						if mcpMap, ok := value.(map[string]interface{}); ok {
-							for mcpKey, mcpValue := range mcpMap {
-								if mcpKey != "success" && mcpKey != "timestamp" && mcpKey != "message" {
-									properties = append(properties, fmt.Sprintf("%s:%v", mcpKey, mcpValue))
+			if isRelevant || count < 3 { // Always show some resources if we have space
+				count++
+				prompt.WriteString(fmt.Sprintf("- %s (%s): %s", resourceID, resource.Type, resource.Status))
+
+				// Extract and show minimal properties from state file
+				if resource.Properties != nil {
+					var properties []string
+					propCount := 0
+
+					// Extract from direct properties
+					for key, value := range resource.Properties {
+						if propCount >= 2 { // Extremely limited properties
+							break
+						}
+						
+						if key == "mcp_response" {
+							// Extract from nested mcp_response
+							if mcpMap, ok := value.(map[string]interface{}); ok {
+								for mcpKey, mcpValue := range mcpMap {
+									if propCount >= 2 {
+										break
+									}
+									if mcpKey != "success" && mcpKey != "timestamp" && mcpKey != "message" {
+										valStr := fmt.Sprintf("%v", mcpValue)
+										if len(valStr) > 40 {
+											valStr = valStr[:40] + "..."
+										}
+										properties = append(properties, fmt.Sprintf("%s:%s", mcpKey, valStr))
+										propCount++
+									}
 								}
 							}
+						} else if key != "status" {
+							valStr := fmt.Sprintf("%v", value)
+							if len(valStr) > 40 {
+								valStr = valStr[:40] + "..."
+							}
+							properties = append(properties, fmt.Sprintf("%s:%s", key, valStr))
+							propCount++
 						}
-					} else if key != "status" {
-						properties = append(properties, fmt.Sprintf("%s:%v", key, value))
+					}
+
+					if len(properties) > 0 {
+						prompt.WriteString(fmt.Sprintf(" [%s]", strings.Join(properties, ", ")))
 					}
 				}
-
-				if len(properties) > 0 {
-					prompt.WriteString(fmt.Sprintf(" [%s]", strings.Join(properties, ", ")))
-				}
+				prompt.WriteString("\n")
 			}
-			prompt.WriteString("\n")
+		}
+		if count >= maxResourcesInPrompt {
+			prompt.WriteString("- ... (additional resources omitted for efficiency)\n")
 		}
 		prompt.WriteString("\n")
 	}

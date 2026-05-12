@@ -90,6 +90,11 @@ resource_id_extraction:
         resource_types: ["db_snapshot"]
         priority: 1
         
+      # S3 Bucket - returns bucketName at top level
+      - field_paths: ["bucketName"]
+        resource_types: ["s3_bucket"]
+        priority: 1
+        
       # Route Table Association - returns associationId at top level
       - field_paths: ["associationId"]
         resource_types: ["route_table_association"]
@@ -172,6 +177,11 @@ resource_id_extraction:
         resource_types: ["rds_instance"]
         priority: 1
         
+      # S3 Bucket deletion
+      - field_paths: ["bucketName"]
+        resource_types: ["s3_bucket"]
+        priority: 1
+        
       # Universal fallback for deletion tools
       - field_paths: ["resourceId", "id"]
         resource_types: ["*"]  
@@ -227,6 +237,16 @@ resource_id_extraction:
       # For list array of sg IDs
       - field_paths: ["securityGroupIds"]
         resource_types: ["security_groups"]
+        priority: 1
+
+      # For list-s3-buckets
+      - field_paths: ["bucketName", "buckets"]
+        resource_types: ["s3_bucket"]
+        priority: 1
+
+      # For SODA Contexture tools (describe-bucket-context, get-object-metadata)
+      - field_paths: ["bucketName", "objectKey"]
+        resource_types: ["data_context", "metadata"]
         priority: 1
 
       # Universal fallback for query tools

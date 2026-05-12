@@ -100,6 +100,37 @@ DEPENDENCY PATTERNS (apply to ANY resource type):
 GENERAL RULE: Analyze MCP tool parameters to determine dependencies for ANY resource type
 
 ═══════════════════════════════════════════════════════════════════
+📊 S3 DATA ANALYSIS PATTERNS
+═══════════════════════════════════════════════════════════════════
+
+CRITICAL: The list-s3-objects tool returns FULL METADATA per object:
+  key, size (bytes), sizeHuman, lastModified (RFC3339), etag, prefix (namespace path)
+
+S3 TOOL SELECTION:
+• "List all buckets" / "Data landscape overview" → use list-s3-buckets (bucket-level stats)
+• "List objects in bucket X" / "What files are in X?" → use list-s3-objects (per-object detail)
+• "Object metadata" / "Last modified" / "File size" → use list-s3-objects (returns full metadata)
+• "Top N largest objects" → use list-s3-objects for each bucket, the synthesis step will rank by size
+• "Correlate by prefix/namespace" → use list-s3-objects for each bucket, the synthesis step groups by prefix
+• "Correlate by timestamp" → use list-s3-objects for each bucket, the synthesis step matches lastModified
+
+MULTI-BUCKET ANALYSIS PATTERN (CRITICAL — READ CAREFULLY):
+For queries spanning ALL buckets (e.g., "top 5 largest objects", "correlate by prefix", "find all objects with..."):
+1. You MUST generate a list-s3-objects step for EVERY non-empty bucket.
+2. Look at the MANAGED RESOURCES section — every bucket listed there with objectCount > 0 MUST get its own list-s3-objects step.
+3. Do NOT selectively pick just 2-3 buckets. If there are 6 non-empty buckets, generate 6 list-s3-objects steps.
+4. The synthesis step will then aggregate, sort, rank, and correlate from ALL step outputs.
+5. Empty buckets (objectCount=0) can be skipped.
+
+EXAMPLE: "List top 5 largest objects across all S3"
+If MANAGED RESOURCES shows 9 buckets with 6 non-empty (bucket-a, bucket-b, logs, mytestbucket, mytestdata, testing),
+you MUST generate 6 list-s3-objects steps (one per non-empty bucket) plus 1 list-s3-buckets step = 7 total steps.
+
+IMPORTANT: When the user asks about specific objects, sizes, dates, or cross-bucket analysis,
+you MUST use list-s3-objects (NOT list-s3-buckets). The list-s3-buckets tool only gives
+bucket-level summaries without individual object details.
+
+═══════════════════════════════════════════════════════════════════
 📖 COMPLETE EXAMPLE
 ═══════════════════════════════════════════════════════════════════
 
@@ -114,7 +145,6 @@ User Request: "Create two public subnets"
 {
   "action": "create_infrastructure",
   "reasoning": "VPC vpc-04aea exists in MANAGED. Extract vpcId and create subnets directly.",
-  "confidence": 0.9,
   "executionPlan": [
     {
       "id": "step-create-subnet-1",
@@ -145,7 +175,6 @@ User Request: "Create two public subnets"
 {
   "action": "create_infrastructure",
   "reasoning": "Need to discover VPC first",
-  "confidence": 0.8,
   "executionPlan": [
     {
       "id": "step-discover-vpc",        // WRONG! VPC is MANAGED!
@@ -168,12 +197,11 @@ User Request: "Create two public subnets"
 📤 JSON OUTPUT FORMAT
 ═══════════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON (no markdown):
+⛔ CRITICAL: Your ENTIRE response must be a single JSON object. Do NOT include ANY text, explanation, reasoning, markdown, or thinking before or after the JSON. Start your response with { and end with }. Output the "action" field first.
 
 {
   "action": "create_infrastructure|update_infrastructure|delete_infrastructure|no_action",
   "reasoning": "Explain your analysis and which MANAGED resources you're reusing",
-  "confidence": 0.0-1.0,
   "confidenceFactors": {
     "stateCompleteness": "Assessment of available information",
     "requirementClarity": "How well-defined the request is",
@@ -237,4 +265,4 @@ EXAMPLES TO REMEMBER:
 □ S3 in MANAGED [bucketName:xxx]? → Use directly, NO discovery
 □ ANY resource in MANAGED? → Extract [property:value] and use directly!
 
-BEGIN YOUR ANALYSIS AND PROVIDE YOUR JSON RESPONSE:
+⛔ REMINDER: Output ONLY the JSON object below. No explanations. No reasoning. No markdown. Start with { immediately.

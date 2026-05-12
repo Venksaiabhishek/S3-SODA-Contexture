@@ -153,12 +153,51 @@ func (a *StateAwareAgent) generateMCPToolsSchema() string {
 		toolDetails[toolName] = toolDetail.String()
 	}
 
-	// Write categorized tools with full schemas
+	// Write categorized tools with full schemas - capped at 15 tools to reduce prompt size
+	const maxTools = 15
+	toolsWritten := 0
+
+	// Priority tools to include first (S3 + contexture)
+	priorityPrefixes := []string{"s3", "bucket", "object", "describe-bucket", "analyze-data", "get-object", "list-s3", "create-s3", "delete-s3", "export-infrastructure", "analyze-infrastructure", "detect-infrastructure"}
+	
 	for category, tools := range categories {
-		if len(tools) > 0 {
-			context.WriteString(fmt.Sprintf("=== %s ===\n\n", category))
+		if len(tools) > 0 && toolsWritten < maxTools {
+			var categoryTools []string
+			// Add priority tools first
 			for _, toolName := range tools {
-				context.WriteString(toolDetails[toolName])
+				if toolsWritten >= maxTools {
+					break
+				}
+				for _, prefix := range priorityPrefixes {
+					if strings.HasPrefix(toolName, prefix) {
+						categoryTools = append(categoryTools, toolName)
+						toolsWritten++
+						break
+					}
+				}
+			}
+			// Fill remaining slots from this category
+			for _, toolName := range tools {
+				if toolsWritten >= maxTools {
+					break
+				}
+				alreadyAdded := false
+				for _, t := range categoryTools {
+					if t == toolName {
+						alreadyAdded = true
+						break
+					}
+				}
+				if !alreadyAdded {
+					categoryTools = append(categoryTools, toolName)
+					toolsWritten++
+				}
+			}
+			if len(categoryTools) > 0 {
+				context.WriteString(fmt.Sprintf("=== %s ===\n\n", category))
+				for _, toolName := range categoryTools {
+					context.WriteString(toolDetails[toolName])
+				}
 			}
 		}
 	}

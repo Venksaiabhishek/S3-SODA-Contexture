@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/types"
 )
 
@@ -37,7 +39,7 @@ func (ws *WebServer) getPlanHandler(w http.ResponseWriter, r *http.Request) {
 	// Use MCP server to plan deployment
 	deploymentOrder, deploymentLevels, err := ws.aiAgent.PlanInfrastructureDeployment(ctx, nil, includeLevels)
 	if err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to plan deployment")
+		ws.logger.WithError(err).Error("Failed to plan deployment")
 		http.Error(w, "Deployment planning failed", http.StatusInternalServerError)
 		return
 	}
@@ -53,7 +55,7 @@ func (ws *WebServer) getPlanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to encode plan response")
+		ws.logger.WithError(err).Error("Failed to encode plan response")
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -100,13 +102,13 @@ func (ws *WebServer) processRequestHandler(w http.ResponseWriter, r *http.Reques
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Failed to encode demo response")
+			ws.logger.WithError(err).Error("Failed to encode demo response")
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	ws.aiAgent.Logger.WithFields(map[string]interface{}{
+	ws.logger.WithFields(map[string]interface{}{
 		"request": request,
 		"dry_run": dryRun,
 	}).Info("Processing request with AI agent")
@@ -122,13 +124,49 @@ func (ws *WebServer) processRequestHandler(w http.ResponseWriter, r *http.Reques
 	// Process the request
 	decision, err := ws.aiAgent.ProcessRequest(ctx, request)
 	if err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("AI agent request processing failed")
-		http.Error(w, fmt.Sprintf("AI processing failed: %v", err), http.StatusInternalServerError)
+		ws.logger.WithError(err).Error("AI agent request processing failed")
+		
+		errorMessage := err.Error()
+		statusCode := http.StatusInternalServerError
+		
+		// Map common API errors to appropriate status codes
+		if strings.Contains(errorMessage, "quota") || strings.Contains(errorMessage, "429") || strings.Contains(errorMessage, "Too Many Requests") {
+			statusCode = http.StatusTooManyRequests
+			errorMessage = "AI API Quota Exceeded. Please wait a moment before trying again (Gemini Free Tier limit: 15-20 requests/minute)."
+			
+			// Extract retry time if available in error message
+			if strings.Contains(err.Error(), "retry in") {
+				parts := strings.Split(err.Error(), "retry in")
+				if len(parts) > 1 {
+					errorMessage += fmt.Sprintf(" Model suggests retrying in%s", parts[1])
+				}
+			}
+		} else if strings.Contains(errorMessage, "truncated") {
+			errorMessage = "AI response was too long and got truncated. Try a more specific query or increase MaxTokens in config.yaml."
+		}
+
+		http.Error(w, errorMessage, statusCode)
 		return
 	}
 
 	// Store the decision for later execution
 	ws.storeDecisionWithDryRun(decision, dryRun)
+
+	// Ensure EVERY decision has a virtual synthesis step for consistent "Final Response" UI
+	synthesisStep := &types.ExecutionPlanStep{
+		ID:     "synthesis-" + decision.ID,
+		Name:   "Infrastructure Synthesis",
+		Status: "pending",
+		Action: "Synthesize findings and provide final conversational response",
+	}
+
+	if decision.ExecutionPlan == nil {
+		decision.ExecutionPlan = []*types.ExecutionPlanStep{synthesisStep}
+		// Force action to 'execution' so the UI allows running the synthesis step
+		decision.Action = "execution"
+	} else {
+		decision.ExecutionPlan = append(decision.ExecutionPlan, synthesisStep)
+	}
 
 	// Build response with execution plan (without executing yet)
 	response := map[string]interface{}{
@@ -145,7 +183,7 @@ func (ws *WebServer) processRequestHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to encode AI response")
+		ws.logger.WithError(err).Error("Failed to encode AI response")
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -172,7 +210,7 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&executeRequest); err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to decode execute request")
+		ws.logger.WithError(err).Error("Failed to decode execute request")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -182,17 +220,17 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	ws.aiAgent.Logger.WithField("decision_id", executeRequest.DecisionID).Info("Executing plan with plan-level recovery")
+	ws.logger.WithField("decision_id", executeRequest.DecisionID).Info("Executing plan with plan-level recovery")
 
 	// Retrieve the stored decision with dry_run flag
 	decision, dryRun, exists := ws.getStoredDecisionWithDryRun(executeRequest.DecisionID)
 	if !exists {
-		ws.aiAgent.Logger.WithField("decision_id", executeRequest.DecisionID).Error("Decision not found")
+		ws.logger.WithField("decision_id", executeRequest.DecisionID).Error("Decision not found")
 		http.Error(w, "Decision not found", http.StatusNotFound)
 		return
 	}
 
-	ws.aiAgent.Logger.WithFields(map[string]interface{}{
+	ws.logger.WithFields(map[string]interface{}{
 		"decision_id": executeRequest.DecisionID,
 		"dry_run":     dryRun,
 	}).Info("Starting plan execution")
@@ -211,20 +249,22 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 		var execution *types.PlanExecution
 		var err error
 
+		executionID := uuid.New().String()
+
 		// Check if dry_run mode - simulate execution instead of real execution
 		if dryRun {
-			ws.aiAgent.Logger.Info("Dry run mode enabled - simulating execution")
-			execution = ws.aiAgent.SimulatePlanExecution(decision, progressChan)
+			ws.logger.Info("Dry run mode enabled - simulating execution")
+			execution = ws.aiAgent.SimulatePlanExecution(decision, progressChan, executionID)
 			// Simulation doesn't return errors
 			err = nil
 		} else {
-			ws.aiAgent.Logger.Info("Live mode - executing plan with ReAct recovery")
-			// Use new plan-level recovery execution
-			execution, err = ws.aiAgent.ExecutePlanWithReActRecovery(ctx, decision, progressChan, ws)
+			ws.logger.Info("Live mode - executing plan with ReAct recovery")
+			// Use new plan-level recovery execution with the same ID
+			execution, err = ws.aiAgent.ExecutePlanWithReActRecovery(ctx, decision, progressChan, ws, executionID)
 		}
 
 		if err != nil {
-			ws.aiAgent.Logger.WithError(err).Error("Plan execution with recovery failed")
+			ws.logger.WithError(err).Error("Plan execution with recovery failed")
 			// Send error update
 			select {
 			case progressChan <- &types.ExecutionUpdate{
@@ -237,7 +277,7 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 			default:
 			}
 		} else {
-			ws.aiAgent.Logger.WithFields(map[string]interface{}{
+			ws.logger.WithFields(map[string]interface{}{
 				"execution_id": execution.ID,
 				"status":       execution.Status,
 				"total_steps":  len(execution.Steps),
@@ -248,7 +288,7 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 	// Start progress streaming in another goroutine
 	go func() {
 		for update := range progressChan {
-			ws.aiAgent.Logger.WithFields(map[string]interface{}{
+			ws.logger.WithFields(map[string]interface{}{
 				"type":    update.Type,
 				"message": update.Message,
 			}).Debug("Broadcasting execution update")
@@ -259,6 +299,7 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 				"executionId": update.ExecutionID,
 				"stepId":      update.StepID,
 				"message":     update.Message,
+				"summary":     update.Summary,
 				"error":       update.Error,
 				"timestamp":   update.Timestamp,
 			})
@@ -276,7 +317,7 @@ func (ws *WebServer) executeWithPlanRecoveryHandler(w http.ResponseWriter, r *ht
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		ws.aiAgent.Logger.WithError(err).Error("Failed to encode execute response")
+		ws.logger.WithError(err).Error("Failed to encode execute response")
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}

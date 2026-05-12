@@ -14,11 +14,11 @@ import (
 func (ws *WebServer) handleIncomingMessage(connID string, msgData []byte) {
 	var message RecoveryMessage
 	if err := json.Unmarshal(msgData, &message); err != nil {
-		ws.aiAgent.Logger.WithError(err).WithField("conn_id", connID).Error("Failed to parse WebSocket message")
+		ws.logger.WithError(err).WithField("conn_id", connID).Error("Failed to parse WebSocket message")
 		return
 	}
 
-	ws.aiAgent.Logger.WithFields(logrus.Fields{
+	ws.logger.WithFields(logrus.Fields{
 		"conn_id":      connID,
 		"type":         message.Type,
 		"execution_id": message.ExecutionID,
@@ -30,7 +30,7 @@ func (ws *WebServer) handleIncomingMessage(connID string, msgData []byte) {
 	case "plan_recovery_abort":
 		ws.handlePlanRecoveryAbort(message)
 	default:
-		ws.aiAgent.Logger.WithFields(logrus.Fields{
+		ws.logger.WithFields(logrus.Fields{
 			"conn_id": connID,
 			"type":    message.Type,
 		}).Warn("Unknown WebSocket message type")
@@ -39,7 +39,7 @@ func (ws *WebServer) handleIncomingMessage(connID string, msgData []byte) {
 
 // handlePlanRecoveryDecision processes user's plan recovery decision
 func (ws *WebServer) handlePlanRecoveryDecision(message RecoveryMessage) {
-	ws.aiAgent.Logger.WithFields(logrus.Fields{
+	ws.logger.WithFields(logrus.Fields{
 		"execution_id": message.ExecutionID,
 		"approved":     message.Approved,
 	}).Info("Processing plan recovery decision")
@@ -50,7 +50,7 @@ func (ws *WebServer) handlePlanRecoveryDecision(message RecoveryMessage) {
 	ws.planRecoveryMutex.Unlock()
 
 	if !exists {
-		ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Warn("No pending plan recovery request found")
+		ws.logger.WithField("execution_id", message.ExecutionID).Warn("No pending plan recovery request found")
 		return
 	}
 
@@ -61,18 +61,18 @@ func (ws *WebServer) handlePlanRecoveryDecision(message RecoveryMessage) {
 
 	select {
 	case request.ResponseChan <- response:
-		ws.aiAgent.Logger.WithFields(logrus.Fields{
+		ws.logger.WithFields(logrus.Fields{
 			"execution_id": message.ExecutionID,
 			"approved":     message.Approved,
 		}).Info("Plan recovery decision sent to execution")
 	default:
-		ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Error("Failed to send plan recovery decision - channel full or closed")
+		ws.logger.WithField("execution_id", message.ExecutionID).Error("Failed to send plan recovery decision - channel full or closed")
 	}
 }
 
 // handlePlanRecoveryAbort processes user's plan recovery abort decision
 func (ws *WebServer) handlePlanRecoveryAbort(message RecoveryMessage) {
-	ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Info("Processing plan recovery abort")
+	ws.logger.WithField("execution_id", message.ExecutionID).Info("Processing plan recovery abort")
 
 	// Find the pending plan recovery request
 	ws.planRecoveryMutex.Lock()
@@ -80,7 +80,7 @@ func (ws *WebServer) handlePlanRecoveryAbort(message RecoveryMessage) {
 	ws.planRecoveryMutex.Unlock()
 
 	if !exists {
-		ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Warn("No pending plan recovery request found for abort")
+		ws.logger.WithField("execution_id", message.ExecutionID).Warn("No pending plan recovery request found for abort")
 		return
 	}
 
@@ -91,8 +91,8 @@ func (ws *WebServer) handlePlanRecoveryAbort(message RecoveryMessage) {
 
 	select {
 	case request.ResponseChan <- response:
-		ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Info("Plan recovery abort sent to execution")
+		ws.logger.WithField("execution_id", message.ExecutionID).Info("Plan recovery abort sent to execution")
 	default:
-		ws.aiAgent.Logger.WithField("execution_id", message.ExecutionID).Error("Failed to send plan recovery abort - channel full or closed")
+		ws.logger.WithField("execution_id", message.ExecutionID).Error("Failed to send plan recovery abort - channel full or closed")
 	}
 }

@@ -94,6 +94,12 @@ resource_fields:
     description: [description, imageDescription]
     state: [state, imageState]
     
+  # S3 Bucket resources
+  s3_bucket:
+    id: [bucketName, name, resourceId]
+    name: [bucketName, name]
+    state: [state, status]
+
   # Availability Zone resources
   availability_zone:
     name: [zoneName, availabilityZone, name]
@@ -236,3 +242,8 @@ output_field_mapping:
   route_table:
     id: routeTableId
     vpc_id: vpcId
+
+  s3_bucket:
+    id: bucketName
+    name: bucketName
+    state: state

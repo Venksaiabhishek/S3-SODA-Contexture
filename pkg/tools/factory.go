@@ -7,6 +7,7 @@ import (
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/conflict"
+	"github.com/versus-control/ai-infrastructure-agent/pkg/contexture"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/discovery"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/graph"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/interfaces"
@@ -188,6 +189,27 @@ func (f *ToolFactoryImpl) CreateTool(toolType string, actionType string, depende
 	case "describe-db-instance":
 		return NewDescribeDBInstanceTool(deps.AWSClient, actionType, f.logger), nil
 
+	// S3 Tools
+	case "create-s3-bucket":
+		return NewCreateS3BucketTool(deps.AWSClient, actionType, f.logger), nil
+	case "list-s3-buckets":
+		return NewListS3BucketsTool(deps.AWSClient, actionType, f.logger), nil
+	case "list-s3-objects":
+		return NewListS3ObjectsTool(deps.AWSClient, actionType, f.logger), nil
+	case "delete-s3-bucket":
+		return NewDeleteS3BucketTool(deps.AWSClient, actionType, f.logger), nil
+
+	// SODA Contexture Tools
+	case "analyze-data-landscape":
+		ctxBuilder := contexture.NewContextBuilder(deps.AWSClient.GetS3Client(), "http://localhost:9000", f.logger)
+		return NewAnalyzeDataLandscapeTool(ctxBuilder, actionType, f.logger), nil
+	case "describe-bucket-context":
+		ctxBuilder := contexture.NewContextBuilder(deps.AWSClient.GetS3Client(), "http://localhost:9000", f.logger)
+		return NewDescribeBucketContextTool(ctxBuilder, actionType, f.logger), nil
+	case "get-object-metadata":
+		ctxBuilder := contexture.NewContextBuilder(deps.AWSClient.GetS3Client(), "http://localhost:9000", f.logger)
+		return NewGetObjectMetadataTool(ctxBuilder, actionType, f.logger), nil
+
 	// State Management Tools
 	case "analyze-infrastructure-state":
 		return NewAnalyzeStateTool(deps, deps.AWSClient, actionType, f.logger), nil
@@ -238,6 +260,7 @@ func (f *ToolFactoryImpl) GetSupportedToolTypes() map[string][]string {
 			"create-db-subnet-group",
 			"create-db-instance",
 			"create-db-snapshot",
+			"create-s3-bucket",
 		},
 		"query": {
 			"list-ec2-instances",
@@ -263,6 +286,11 @@ func (f *ToolFactoryImpl) GetSupportedToolTypes() map[string][]string {
 			"list-db-instances",
 			"list-db-snapshots",
 			"describe-db-instance",
+			"list-s3-buckets",
+			"list-s3-objects",
+			"analyze-data-landscape",
+			"describe-bucket-context",
+			"get-object-metadata",
 		},
 		"modification": {
 			"start-ec2-instance",
@@ -276,6 +304,7 @@ func (f *ToolFactoryImpl) GetSupportedToolTypes() map[string][]string {
 			"terminate-ec2-instance",
 			"delete-security-group",
 			"delete-db-instance",
+			"delete-s3-bucket",
 		},
 		"association": {
 			"associate-route-table",

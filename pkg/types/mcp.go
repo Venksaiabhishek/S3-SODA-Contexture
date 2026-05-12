@@ -184,6 +184,7 @@ type ExecutionUpdate struct {
 	ExecutionID string    `json:"executionId"`
 	StepID      string    `json:"stepId,omitempty"`
 	Message     string    `json:"message"`
+	Summary     string    `json:"summary,omitempty"`
 	Error       string    `json:"error,omitempty"`
 	Progress    float64   `json:"progress,omitempty"` // 0.0 to 1.0
 	Timestamp   time.Time `json:"timestamp"`

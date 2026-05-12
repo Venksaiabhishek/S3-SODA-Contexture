@@ -35,3 +35,13 @@ bin
 states
 prompts
 conda
+
+# Runtime logs
+*.log
+server*.log
+
+# Archives and binaries
+*.tar.gz
+
+# Temp files
+tmp/

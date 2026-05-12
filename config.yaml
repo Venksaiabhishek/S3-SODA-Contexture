@@ -1,21 +1,22 @@
-# Example configuration for Google AI (Gemini) provider
+server:
+  port: 3000
+  host: "localhost"
+
 aws:
-  region: "ap-southeast-5"
+  region: "us-west-2"
 
 mcp:
   server_name: "aws-infrastructure-server"
   version: "1.0.0"
 
 agent:
-  provider: "gemini"              # Use Google AI (Gemini)
-  model: "gemini-2.5-flash-lite"
-  max_tokens: 20000
-  temperature: 0.1
-  dry_run: true
+  provider: "gemini"
+  model: "gemini-flash-latest"
+  max_tokens: 8192
+  temperature: 0.0
+  dry_run: false
   auto_resolve_conflicts: false
   enable_debug: true
-  step_delay_ms: 1000
-  # Note: Set GEMINI_API_KEY environment variable
 
 logging:
   level: "info"

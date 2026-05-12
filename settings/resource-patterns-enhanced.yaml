@@ -122,6 +122,13 @@ resource_identification:
       - 'db subnet group'
       - 'database subnet group'
 
+    s3_bucket:
+      - 's3'
+      - 's3 bucket'
+      - 'bucket'
+      - 'storage bucket'
+      - 'object storage'
+
 # Tool-to-resource type mapping (REQUIRED - used by PatternMatcher)
 # Maps exact tool names to resource types for proper ID extraction
 # These are verified against pkg/tools/factory.go
@@ -221,6 +228,16 @@ tool_resource_patterns:
   availability_zone:
     - '^get-availability-zones$'
 
+  s3_bucket:
+    - '^create-s3-bucket$'
+    - '^list-s3-buckets$'
+    - '^delete-s3-bucket$'
+
+  data_context:
+    - '^analyze-data-landscape$'
+    - '^describe-bucket-context$'
+    - '^get-object-metadata$'
+
 # Resource hierarchy and relationships
 resource_relationships:
   # Parent -> Children mapping
@@ -299,6 +316,12 @@ tool_categories:
     - rds_instance
     - db_subnet_group
     - db_snapshot
+    
+  storage:
+    - s3_bucket
+    
+  contexture:
+    - data_context
     
   discovery:
     - availability_zone
