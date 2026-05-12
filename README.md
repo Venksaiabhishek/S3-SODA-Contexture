@@ -1,7 +1,5 @@
 # S3-SODA-Contexture
 
-> ⚠️ **Proof of Concept Project**: This repository contains a proof-of-concept implementation of an AI-powered infrastructure management system with S3/MinIO storage integration, built on the SODA Contexture framework. It is currently in active development and **not intended for production use**. Use at your own risk and always test in development environments first.
-
 <h1 align="center" style="border-bottom: none">
   <img alt="S3-SODA-Contexture" src="docs/images/ai-infrastructure-agent.svg" width="150" height="150">
 </h1>
@@ -13,195 +11,30 @@
 [![MCP](https://img.shields.io/badge/Protocol-MCP-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
 [![SODA](https://img.shields.io/badge/SODA-Contexture-blue?style=for-the-badge)](https://sodafoundation.io/)
 
-*Intelligent AWS infrastructure and S3 storage management through natural language interactions, powered by SODA Contexture*
+*Intelligent AWS infrastructure and S3 storage management through natural language, powered by SODA Contexture*
 
 </div>
 
+---
+
 ## What is S3-SODA-Contexture?
 
-S3-SODA-Contexture is an intelligent infrastructure management system that integrates S3/MinIO storage capabilities with the SODA Contexture open context engine. It allows you to manage AWS infrastructure and S3-compatible storage backends using natural language commands. Powered by advanced AI models (OpenAI GPT, Google Gemini, or Anthropic Claude), it translates your infrastructure requests into executable operations while maintaining safety through conflict detection and resolution.
+S3-SODA-Contexture is an intelligent infrastructure management system that integrates S3/MinIO storage capabilities with the [SODA Contexture](https://github.com/sodafoundation/contexture) open context engine. It allows you to manage AWS infrastructure and S3-compatible storage backends using natural language commands.
 
-<h1 align="center" style="border-bottom: none">
-  <img alt="Web Dashboard" src="docs/images/web-dashboard.svg">
-</h1>
+Powered by AI models (Google Gemini, OpenAI GPT, Anthropic Claude, or local Ollama), it translates your requests into executable operations while maintaining safety through conflict detection and dry-run mode.
 
 ### Key Features
 
-- **Natural Language Interface** - Describe what you want, not how to build it
-- **S3/MinIO Storage Integration** - Full S3-compatible storage management via SODA Contexture
-- **Multi-AI Provider Support** - Choose between OpenAI, Google Gemini, Anthropic, AWS Bedrock Nova, or Ollama (local LLM)
-- **Web Dashboard** - Visual interface for infrastructure management, built-in conflict detection and dry-run mode
-- **SODA Contexture Engine** - Enriched operational context for accurate AI-driven decisions
-- **MCP Protocol** - Model Context Protocol server with 15+ observability tools
-- **Terraform-like state** - Maintains accurate infrastructure state
+- **Natural Language Interface** — Describe what you want, not how to build it
+- **S3/MinIO Storage Integration** — Full S3-compatible storage management via SODA Contexture
+- **SODA Contexture Engine** — Enriched operational context (OCS) for accurate AI-driven decisions
+- **Multi-AI Provider Support** — OpenAI, Google Gemini, Anthropic, AWS Bedrock Nova, or Ollama
+- **Web Dashboard** — Visual interface with built-in conflict detection and dry-run mode
+- **MCP Protocol** — Model Context Protocol server with 15+ observability tools
+- **Infrastructure Synthesis** — AI-generated SRE summary reports after every task
+- **Smart Context Capping** — Handles large infrastructures (100+ resources) within API token limits
 
-## Example Usage
-
-Imagine you want to create AWS infrastructure with a simple request:
-
-> **"Create an EC2 instance for hosting an Apache Server with a dedicated security group that allows inbound HTTP (port 80) and SSH (port 22) traffic."**
-
-> 💡 **Amazon Nova Users**: When using AWS Bedrock Nova models, you may want to specify the region in your request for better context, e.g., *"Create an EC2 instance in us-east-1 for hosting an Apache Server..."*
-
-Here's what happens:
-
-### 1. AI Analysis & Planning
-
-The AI agent analyzes your request and creates a detailed execution plan:
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant A as Agent
-    participant S as State Manager
-    participant M as MCP Server
-    participant AWS as AWS APIs
-    
-    U->>A: "Create EC2 instance for Apache Server..."
-    A->>S: Get current infrastructure state
-    S->>A: Return current state
-    A->>M: Query available tools & capabilities
-    M->>A: Return tool capabilities
-    A->>A: Generate execution plan with LLM
-    A->>AWS: Validate plan (dry-run checks)
-    AWS->>A: Validation results
-    A->>U: Present execution plan for approval
-    
-    Note over A,U: Plan includes:<br/>• Get Default VPC<br/>• Create Security Group<br/>• Add HTTP & SSH rules<br/>• Get Latest AMI<br/>• Create EC2 Instance
-```
-
-The agent presents the plan for your review:
-- Shows exactly what will be created
-- Waits for your approval
-
-<h1 align="center" style="border-bottom: none">
-  <img alt="Execution & Monitoring" src="docs/images/simple-demo.png" width="650">
-</h1>
-
-### 2. Execution & Monitoring
-
-Once approved, the agent:
-- Creates resources in the correct order
-- Monitors progress in real-time
-- Handles dependencies automatically
-- Reports completion status
-
-### 3. S3 Storage Operations
-
-The Contexture integration enables S3 storage management:
-- **Bucket Management** - Create, list, and manage S3/MinIO buckets
-- **Data Landscape Analysis** - Scan and analyze storage topology
-- **Object Operations** - Upload, download, and manage objects
-- **Schema Detection** - Automatic data schema discovery
-
-## How To Run
-
-### Prerequisites
-
-- **Go 1.24+**
-- **MinIO** (local S3-compatible storage)
-- **Python 3.9+** (for MCP server and Contexture engine)
-- **MongoDB** (for topology storage)
-
-### Clone the repository
-
-```bash
-git clone https://github.com/Venksaiabhishek/S3-SODA-Contexture.git
-cd S3-SODA-Contexture
-```
-
-### 1. Edit Configuration File
-
-```bash
-# Edit the main configuration
-nano config.yaml
-```
-
-### 2. Set Your AI Provider
-
-Choose your preferred AI provider in `config.yaml`:
-
-```yaml
-agent:
-  provider: "openai"          # Options: openai, gemini, anthropic, bedrock, ollama
-  model: "gpt-4"             # Model to use
-  max_tokens: 4000
-  temperature: 0.1
-  dry_run: true              # Start with dry-run enabled
-  auto_resolve_conflicts: false
-```
-
-### 3. Set Environment Variables
-
-```bash
-# For OpenAI
-export OPENAI_API_KEY="your-openai-api-key"
-
-# For Google Gemini
-export GEMINI_API_KEY="your-gemini-api-key"
-
-# For Anthropic Claude
-export ANTHROPIC_API_KEY="your-anthropic-api-key"
-
-# For Ollama (optional - defaults to http://localhost:11434)
-export OLLAMA_SERVER_URL="http://localhost:11434"
-
-# For AWS Bedrock Nova - use AWS credentials (no API key needed)
-# Configure AWS credentials using: aws configure, environment variables, or IAM roles
-```
-
-### 4. Configure AWS Credentials
-
-```bash
-# Configure AWS CLI
-aws configure
-
-# Or set environment variables
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="us-west-2"
-```
-
-### 5. Start MinIO (S3 Backend)
-
-```bash
-# Start local MinIO server
-MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
-  minio server /tmp/minio-data --console-address ":9001"
-```
-
-MinIO will be accessible at:
-- **API**: http://localhost:9000
-- **Console**: http://localhost:9001
-
-### 6. Launch the Application
-
-```bash
-./scripts/run-web-ui.sh
-```
-
-### Access the Dashboard
-
-Open your browser and navigate to:
-```
-http://localhost:8080
-```
-
-## Usage Examples
-
-```bash
-# Simple EC2 instance
-"Create a t3.micro EC2 instance with Ubuntu 22.04"
-
-# Web server setup
-"Deploy a load-balanced web application with 2 EC2 instances behind an ALB"
-
-# S3 storage operations
-"Analyze the data landscape across all S3 buckets"
-
-# Complete environment
-"Set up a development environment with VPC, subnets, EC2, and RDS"
-```
+---
 
 ## Architecture
 
@@ -209,15 +42,34 @@ http://localhost:8080
   <img alt="Architecture" src="docs/images/core-components.svg">
 </h1>
 
+```mermaid
+graph TD
+    U[User - Natural Language Query] --> WEB[Web Dashboard :8080]
+    WEB --> AGENT[Agent Core - Go]
+    AGENT --> LLM[AI Provider - Gemini/OpenAI/Claude]
+    AGENT --> MCP[MCP Server - Model Context Protocol]
+    MCP --> S3TOOLS[S3 Tools - Bucket/Object Ops]
+    MCP --> CTXTOOLS[Contexture Tools - Schema/Landscape]
+    MCP --> AWSTOOLS[AWS Tools - EC2/VPC/SG/ALB]
+    S3TOOLS --> MINIO[MinIO - localhost:9000]
+    CTXTOOLS --> OCS[SODA Contexture - OCS Engine]
+    AWSTOOLS --> AWS[AWS APIs]
+    AGENT --> STATE[State Manager - JSON]
+```
+
 ### Components
 
-- **Web Interface**: React-based dashboard for visual interaction
-- **MCP Server**: Core agent implementing Model Context Protocol
-- **Agent Core**: AI-powered decision making and planning
-- **SODA Contexture Engine**: Open Context Specification (OCS) for enriched AI context
-- **S3/MinIO Client**: S3-compatible storage backend integration
-- **AWS Client**: Secure AWS SDK integration
-- **State Management**: Infrastructure state tracking and conflict resolution
+| Component | Description |
+|-----------|-------------|
+| **Web Interface** | React dashboard for visual interaction (port 8080) |
+| **Agent Core** | AI-powered planning, execution, and ReAct recovery loop |
+| **MCP Server** | Model Context Protocol with S3, Contexture, and AWS tools |
+| **SODA Contexture Engine** | OCS-based context builder for enriched AI reasoning |
+| **S3/MinIO Client** | S3-compatible storage operations (buckets, objects, schema) |
+| **AWS Client** | EC2, VPC, Security Groups, ALB, Autoscaling via AWS SDK |
+| **State Manager** | Terraform-like infrastructure state tracking |
+
+---
 
 ## Project Structure
 
@@ -229,30 +81,193 @@ S3-SODA-Contexture/
 │   ├── agent/                # AI agent core (planning, execution, recovery)
 │   ├── api/                  # HTTP handlers, WebSocket, server
 │   ├── aws/                  # AWS SDK client + S3 operations
-│   ├── contexture/           # SODA Contexture integration (OCS types, context builder)
+│   ├── contexture/           # SODA Contexture integration
+│   │   ├── context_builder.go   # OCS context builder for S3 data
+│   │   └── ocs_types.go         # Open Context Specification types
 │   ├── discovery/            # Infrastructure scanner
-│   ├── tools/                # MCP tools (S3, Contexture, factory)
-│   └── types/                # Shared types
+│   ├── tools/                # MCP tool implementations
+│   │   ├── factory.go           # Tool registry and factory
+│   │   ├── s3_tools.go          # S3 bucket/object tools
+│   │   └── contexture_tools.go  # Data landscape & schema tools
+│   └── types/                # Shared types (MCP definitions)
 ├── settings/                 # Resource patterns, field mappings, prompt templates
 ├── scripts/                  # Run and install scripts
-└── web/                      # React web dashboard
+├── states/                   # Infrastructure state (auto-generated)
+└── web/                      # React web dashboard (pre-built)
 ```
+
+---
+
+## Prerequisites
+
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| **Go** | 1.24+ | Build and run the agent |
+| **MinIO** | Latest | Local S3-compatible storage backend |
+| **AI API Key** | — | One of: Gemini, OpenAI, Anthropic, or Ollama |
+| **AWS Credentials** | — | For AWS resource management (optional for S3-only) |
+
+---
+
+## Complete Setup & Run Guide
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/Venksaiabhishek/S3-SODA-Contexture.git
+cd S3-SODA-Contexture
+```
+
+### Step 2: Set Environment Variables
+
+```bash
+# AI Provider (choose one)
+export GEMINI_API_KEY="your-gemini-api-key"
+# export OPENAI_API_KEY="your-openai-api-key"
+# export ANTHROPIC_API_KEY="your-anthropic-api-key"
+
+# MinIO / S3 Credentials
+export AWS_ACCESS_KEY_ID="minioadmin"
+export AWS_SECRET_ACCESS_KEY="minioadmin"
+export AWS_REGION="us-west-2"
+
+# Go path (if not already in PATH)
+# export PATH="/usr/local/go/bin:$PATH"
+```
+
+### Step 3: Edit Configuration
+
+Edit `config.yaml` to set your AI provider and model:
+
+```yaml
+server:
+  port: 3000
+  host: "localhost"
+
+aws:
+  region: "us-west-2"
+
+agent:
+  provider: "gemini"              # Options: gemini, openai, anthropic, bedrock, ollama
+  model: "gemini-flash-latest"    # Model to use
+  max_tokens: 8192
+  temperature: 0.0
+  dry_run: false                  # Set true for safe testing
+  auto_resolve_conflicts: false
+  enable_debug: true
+
+web:
+  port: 8080
+  host: "localhost"
+```
+
+### Step 4: Start MinIO
+
+Ensure your local MinIO instance is running on port 9000:
+
+```bash
+# Start MinIO server
+MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
+  minio server /tmp/minio-data --console-address ":9001"
+```
+
+Verify it's running:
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/live
+# Should return: 200
+```
+
+| Endpoint | URL |
+|----------|-----|
+| MinIO API | http://localhost:9000 |
+| MinIO Console | http://localhost:9001 |
+
+### Step 5: Launch the Application
+
+```bash
+./scripts/run-web-ui.sh
+```
+
+### Step 6: Access the Web UI
+
+Open your browser to: **http://localhost:8080**
+
+---
+
+## Using the Web UI
+
+### Execution Plan (Transparency)
+Before any action is taken, the AI presents a decision plan. You can review exactly what tools (e.g., `describe-bucket`, `analyze-data-landscape`) the AI will use before approving.
+
+### Live Terminal Logs (Observability)
+Real-time feed of API interactions provides a "black box" recording for debugging. You can see raw JSON data returned from MinIO.
+
+### Infrastructure State Tab (Discovered Assets)
+A visual dashboard of all resources the AI currently knows about — S3 buckets, EC2 instances, VPCs, and more.
+
+### Infrastructure Synthesis (Final Report)
+Found at the bottom of the execution plan, this step provides a human-readable SRE summary (e.g., *"I've analyzed bucket-a; it contains 105MB of data across 3 objects."*).
+
+> **Tip**: To see a full execution plan, uncheck **"Dry Run Mode"** in the UI settings before clicking "Process Request".
+
+---
+
+## Usage Examples
+
+```bash
+# S3 storage analysis
+"Analyze the data landscape across all S3 buckets"
+
+# Bucket operations
+"List all buckets and show their sizes"
+
+# Infrastructure creation
+"Create a t3.micro EC2 instance with Ubuntu 22.04"
+
+# Web server setup
+"Deploy a load-balanced web application with 2 EC2 instances behind an ALB"
+
+# Full environment
+"Set up a development environment with VPC, subnets, EC2, and RDS"
+```
+
+### How It Works
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent
+    participant S as State Manager
+    participant M as MCP Server
+    participant AWS as AWS / MinIO
+
+    U->>A: "Analyze data landscape across all S3 buckets"
+    A->>S: Get current infrastructure state
+    S->>A: Return current state
+    A->>M: Query available tools & capabilities
+    M->>A: Return tool list
+    A->>A: Generate execution plan with LLM
+    A->>AWS: Execute tools (list-buckets, describe-bucket, etc.)
+    AWS->>A: Results
+    A->>A: Infrastructure Synthesis (SRE report)
+    A->>U: Present final report in UI
+```
+
+---
 
 ## Safety Features
 
-### Dry Run Mode
-All operations can be run in "dry-run" mode first:
-- Shows exactly what would be created/modified/deleted
-- Estimates costs before execution
-- No actual AWS resources are touched
+| Feature | Description |
+|---------|-------------|
+| **Dry Run Mode** | Preview what would be created/modified/deleted before execution |
+| **State Management** | Terraform-like state tracking with drift detection |
+| **Smart Context Capping** | Limits AI prompt to 40 tools and 30 resources max (~10k tokens) |
+| **Conflict Detection** | Detects and flags resource conflicts before execution |
+| **ReAct Recovery** | Automatic retry and recovery loop for failed operations |
 
-### State Management
-- Maintains accurate infrastructure state
-- Detects drift from expected configuration
+---
 
 ## Troubleshooting
-
-### Common Issues
 
 <details>
 <summary><strong>MinIO Connection Refused (port 9000)</strong></summary>
@@ -265,7 +280,6 @@ lsof -i :9000
 MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
   minio server /tmp/minio-data --console-address ":9001"
 ```
-
 </details>
 
 <details>
@@ -277,107 +291,78 @@ aws sts get-caller-identity
 
 # Verify permissions
 aws iam get-user
-
-# Test basic AWS access
-aws ec2 describe-regions
 ```
-
 </details>
 
 <details>
-<summary><strong>AI Provider API Issues</strong></summary>
+<summary><strong>AI Provider Issues / 429 Quota Exceeded</strong></summary>
 
-```bash
-# Check API key is set
-echo $OPENAI_API_KEY
+The smart context capping mechanism limits token usage to ~10k per request. If you still hit quota limits:
 
-# Test API connection
-curl -H "Authorization: Bearer $OPENAI_API_KEY" \
-     https://api.openai.com/v1/models
+```yaml
+# In config.yaml, try reducing max_tokens:
+agent:
+  max_tokens: 4096
 ```
 
+Or switch to a local model:
+```yaml
+agent:
+  provider: "ollama"
+  model: "qwen2.5-coder:7b"
+```
+</details>
+
+<details>
+<summary><strong>Decision validation failed: confidence too low</strong></summary>
+
+Increase max_tokens in `config.yaml`:
+
+```yaml
+agent:
+  max_tokens: 10000
+```
 </details>
 
 <details>
 <summary><strong>Port Already in Use</strong></summary>
 
 ```bash
-# Check what's using the port
 lsof -i :8080
-lsof -i :3000
-
-# Kill processes if needed
 kill -9 <pid>
-
-# Or change ports in config.yaml
 ```
-
 </details>
 
 <details>
 <summary><strong>Go Build Issues</strong></summary>
 
 ```bash
-# Clean module cache
 go clean -modcache
-
-# Re-download dependencies
 go mod download
 go mod tidy
-
-# Rebuild
 go build ./...
 ```
-
 </details>
 
-<details>
-<summary><strong>Decision validation failed: decision confidence too low: 0.000000</strong></summary>
-
-Try increase max_tokens:
-
-```yaml
-agent:
-  provider: "gemini"              # Use Google AI (Gemini)
-  model: "gemini-2.5-flash-lite"
-  max_tokens: 10000 # <-- increase
-```
-
-</details>
+---
 
 ## Security Considerations
 
-- **API Keys**: Never commit API keys to version control
-- **AWS Permissions**: Use least-privilege IAM policies
-- **MinIO Credentials**: Change default minioadmin credentials in production
-- **Network Security**: Run in private networks when possible
-- **Audit Logging**: Enable comprehensive logging for compliance
-- **Dry Run**: Always test in dry-run mode first
+- **API Keys** — Never commit API keys to version control
+- **MinIO Credentials** — Change default `minioadmin` credentials in production
+- **AWS Permissions** — Use least-privilege IAM policies
+- **Dry Run** — Always test in dry-run mode first
+- **Network Security** — Run in private networks when possible
+
+---
 
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feature-name`
-2. Make your changes
-3. Run tests
-4. Commit: `git commit -m "Add feature"`
-5. Push: `git push origin feature-name`
-6. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚖️ Disclaimer
-
-This is a proof-of-concept project. While we've implemented safety measures like dry-run mode and conflict detection, always:
-
-- Test in development environments first
-- Review all generated plans before execution
-- Maintain proper AWS IAM permissions
-- Monitor costs and resource usage
-- Keep backups of critical infrastructure
-
-The authors are not responsible for any costs, data loss, or security issues that may arise from using this software.
+2. Make your changes and test
+3. Commit: `git commit -m "Add feature"`
+4. Push: `git push origin feature-name`
+5. Create a Pull Request
 
 ---
 
