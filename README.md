@@ -459,52 +459,7 @@ Adding a new tool lets the AI agent expose more **Prometheus-powered capabilitie
 
 ---
 
-## 🛠️ Troubleshooting
 
-<details>
-<summary><strong>MinIO Connection Refused (port 9000)</strong></summary>
-
-```bash
-lsof -i :9000
-MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
-  minio server /tmp/minio-data --console-address ":9001"
-```
-</details>
-
-<details>
-<summary><strong>429 Quota Exceeded (AI Provider)</strong></summary>
-
-The smart context capping mechanism limits token usage. If you still hit limits:
-```yaml
-agent:
-  max_tokens: 4096
-```
-Or switch to local Ollama:
-```yaml
-agent:
-  provider: "ollama"
-  model: "qwen2.5-coder:7b"
-```
-</details>
-
-<details>
-<summary><strong>Decision validation failed: confidence too low</strong></summary>
-
-```yaml
-agent:
-  max_tokens: 10000
-```
-</details>
-
-<details>
-<summary><strong>Go Build Issues</strong></summary>
-
-```bash
-go clean -modcache && go mod download && go mod tidy && go build ./...
-```
-</details>
-
----
 
 <div align="center">
 
