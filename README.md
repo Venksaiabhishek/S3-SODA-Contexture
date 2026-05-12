@@ -1,9 +1,9 @@
-# AI Infrastructure Agent
+# S3-SODA-Contexture
 
-> ⚠️ **Proof of Concept Project**: This repository contains a proof-of-concept implementation of an AI-powered infrastructure management agent. It is currently in active development and **not intended for production use**. We plan to release a production-ready version in the future. Use at your own risk and always test in development environments first.
+> ⚠️ **Proof of Concept Project**: This repository contains a proof-of-concept implementation of an AI-powered infrastructure management system with S3/MinIO storage integration, built on the SODA Contexture framework. It is currently in active development and **not intended for production use**. Use at your own risk and always test in development environments first.
 
 <h1 align="center" style="border-bottom: none">
-  <img alt="AI Infrastructure Agent" src="docs/images/ai-infrastructure-agent.svg" width="150" height="150">
+  <img alt="S3-SODA-Contexture" src="docs/images/ai-infrastructure-agent.svg" width="150" height="150">
 </h1>
 
 <div align="center">
@@ -11,14 +11,15 @@
 [![Go Version](https://img.shields.io/badge/Go-1.24.2+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/)
 [![AWS](https://img.shields.io/badge/AWS-Cloud-FF9900?style=for-the-badge&logo=amazon-aws)](https://aws.amazon.com/)
 [![MCP](https://img.shields.io/badge/Protocol-MCP-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
+[![SODA](https://img.shields.io/badge/SODA-Contexture-blue?style=for-the-badge)](https://sodafoundation.io/)
 
-*Intelligent AWS infrastructure management through natural language interactions*
+*Intelligent AWS infrastructure and S3 storage management through natural language interactions, powered by SODA Contexture*
 
 </div>
 
-## What is AI Infrastructure Agent?
+## What is S3-SODA-Contexture?
 
-AI Infrastructure Agent is an intelligent system that allows you to manage AWS infrastructure using natural language commands. Powered by advanced AI models (OpenAI GPT, Google Gemini, or Anthropic Claude), it translates your infrastructure requests into executable AWS operations while maintaining safety through conflict detection and resolution.
+S3-SODA-Contexture is an intelligent infrastructure management system that integrates S3/MinIO storage capabilities with the SODA Contexture open context engine. It allows you to manage AWS infrastructure and S3-compatible storage backends using natural language commands. Powered by advanced AI models (OpenAI GPT, Google Gemini, or Anthropic Claude), it translates your infrastructure requests into executable operations while maintaining safety through conflict detection and resolution.
 
 <h1 align="center" style="border-bottom: none">
   <img alt="Web Dashboard" src="docs/images/web-dashboard.svg">
@@ -27,10 +28,12 @@ AI Infrastructure Agent is an intelligent system that allows you to manage AWS i
 ### Key Features
 
 - **Natural Language Interface** - Describe what you want, not how to build it
+- **S3/MinIO Storage Integration** - Full S3-compatible storage management via SODA Contexture
 - **Multi-AI Provider Support** - Choose between OpenAI, Google Gemini, Anthropic, AWS Bedrock Nova, or Ollama (local LLM)
 - **Web Dashboard** - Visual interface for infrastructure management, built-in conflict detection and dry-run mode
+- **SODA Contexture Engine** - Enriched operational context for accurate AI-driven decisions
+- **MCP Protocol** - Model Context Protocol server with 15+ observability tools
 - **Terraform-like state** - Maintains accurate infrastructure state
-- **Current Resource Support** - VPC, EC2, SG, Autoscaling Group, ALB. Check the roadmap here: [Core Platform Development](https://github.com/orgs/VersusControl/projects/19)
 
 ## Example Usage
 
@@ -49,7 +52,7 @@ The AI agent analyzes your request and creates a detailed execution plan:
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant A as AI Agent
+    participant A as Agent
     participant S as State Manager
     participant M as MCP Server
     participant AWS as AWS APIs
@@ -83,22 +86,28 @@ Once approved, the agent:
 - Handles dependencies automatically
 - Reports completion status
 
-Check <a href="https://www.youtube.com/watch?v=41tupPs-BEU]" target="_blank">Live Demo</a>
+### 3. S3 Storage Operations
 
-### 3. More Examples
-
-- Quick Tutorial: **[AI Infrastructure Agent for AWS](https://github.com/VersusControl/devops-ai-guidelines/blob/main/resources/ai-infrastructure-agent-for-aws.md)**
-- Series Tutorial: **[Building Your Business on AWS with AI Agent](https://github.com/VersusControl/devops-ai-guidelines/blob/main/04-ai-agent-for-aws/00-toc.md)**
+The Contexture integration enables S3 storage management:
+- **Bucket Management** - Create, list, and manage S3/MinIO buckets
+- **Data Landscape Analysis** - Scan and analyze storage topology
+- **Object Operations** - Upload, download, and manage objects
+- **Schema Detection** - Automatic data schema discovery
 
 ## How To Run
 
-Detailed Guides: [Installation Guide](https://ai-agent.devopsvn.tech/docs.html#/installation)
+### Prerequisites
+
+- **Go 1.24+**
+- **MinIO** (local S3-compatible storage)
+- **Python 3.9+** (for MCP server and Contexture engine)
+- **MongoDB** (for topology storage)
 
 ### Clone the repository
 
 ```bash
-git clone https://github.com/VersusControl/ai-infrastructure-agent.git
-cd ai-infrastructure-agent
+git clone https://github.com/Venksaiabhishek/S3-SODA-Contexture.git
+cd S3-SODA-Contexture
 ```
 
 ### 1. Edit Configuration File
@@ -123,13 +132,6 @@ agent:
 ```
 
 ### 3. Set Environment Variables
-
-**Detailed Setup Guides:**
-- **OpenAI**: [OpenAI API Key Setup Guide](https://ai-agent.devopsvn.tech/docs.html#/api-key-setup/openai-api-setup)
-- **Google Gemini**: [Gemini API Key Setup Guide](https://ai-agent.devopsvn.tech/docs.html#/api-key-setup/gemini-api-setup)
-- **Anthropic Claude**: [Anthropic API Key Setup Guide](https://ai-agent.devopsvn.tech/docs.html#/api-key-setup/anthropic-api-setup)
-- **AWS Bedrock Nova**: [AWS Bedrock Nova Configuration Guide](https://ai-agent.devopsvn.tech/docs.html#/api-key-setup/aws-bedrock-nova-setup)
-- **Ollama (Local LLM)**: [Ollama Setup Guide](https://ai-agent.devopsvn.tech/docs.html#/api-key-setup/ollama-setup)
 
 ```bash
 # For OpenAI
@@ -160,79 +162,19 @@ export AWS_SECRET_ACCESS_KEY="your-secret-key"
 export AWS_DEFAULT_REGION="us-west-2"
 ```
 
-## Quick Installation
-
-### Method 1: Docker Installation
-
-Basic Docker Run:
+### 5. Start MinIO (S3 Backend)
 
 ```bash
-docker run -d \
-  --name ai-infrastructure-agent \
-  -p 8080:8080 \
-  -v $(pwd)/config.yaml:/app/config.yaml:ro \
-  -v $(pwd)/states:/app/states \
-  -e OPENAI_API_KEY="your-openai-api-key-here" \
-  -e AWS_ACCESS_KEY_ID="your-aws-access-key" \
-  -e AWS_SECRET_ACCESS_KEY="your-aws-secret-key" \
-  -e AWS_DEFAULT_REGION="us-west-2" \
-  ghcr.io/versuscontrol/ai-infrastructure-agent
+# Start local MinIO server
+MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
+  minio server /tmp/minio-data --console-address ":9001"
 ```
 
-Docker Compose (Recommended). Create a `docker-compose.yml` file:
+MinIO will be accessible at:
+- **API**: http://localhost:9000
+- **Console**: http://localhost:9001
 
-```yaml
-version: '3.8'
-
-services:
-  ai-infrastructure-agent:
-    image: ghcr.io/versuscontrol/ai-infrastructure-agent
-    container_name: ai-infrastructure-agent
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      # Mount configuration file (read-only)
-      - ./config.yaml:/app/config.yaml:ro
-      # Mount data directories (persistent)
-      - ./states:/app/states
-    environment:
-      # AI Provider API Keys (choose one)
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      # - GEMINI_API_KEY=${GEMINI_API_KEY}
-      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      
-      # AWS Configuration
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-west-2}
-```
-
-Start the application:
-
-```bash
-# Start with Docker Compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop the application
-docker-compose down
-```
-
-### Method 2: Automated Bash Script
-
-```bash
-# Clone the repository
-git clone https://github.com/VersusControl/ai-infrastructure-agent.git
-cd ai-infrastructure-agent
-
-# Run the installation script
-./scripts/install.sh
-```
-
-Start the Web UI:
+### 6. Launch the Application
 
 ```bash
 ./scripts/run-web-ui.sh
@@ -254,8 +196,8 @@ http://localhost:8080
 # Web server setup
 "Deploy a load-balanced web application with 2 EC2 instances behind an ALB"
 
-# Database setup
-"Create an RDS MySQL database with read replicas in multiple AZs"
+# S3 storage operations
+"Analyze the data landscape across all S3 buckets"
 
 # Complete environment
 "Set up a development environment with VPC, subnets, EC2, and RDS"
@@ -264,18 +206,37 @@ http://localhost:8080
 ## Architecture
 
 <h1 align="center" style="border-bottom: none">
-  <img alt="Web Dashboard" src="docs/images/core-components.svg">
+  <img alt="Architecture" src="docs/images/core-components.svg">
 </h1>
-
-Read detail: [Technical Architecture Overview](https://ai-agent.devopsvn.tech/docs.html#/architecture/architecture-overview)
 
 ### Components
 
 - **Web Interface**: React-based dashboard for visual interaction
 - **MCP Server**: Core agent implementing Model Context Protocol
 - **Agent Core**: AI-powered decision making and planning
+- **SODA Contexture Engine**: Open Context Specification (OCS) for enriched AI context
+- **S3/MinIO Client**: S3-compatible storage backend integration
 - **AWS Client**: Secure AWS SDK integration
 - **State Management**: Infrastructure state tracking and conflict resolution
+
+## Project Structure
+
+```
+S3-SODA-Contexture/
+├── cmd/                      # CLI entry points
+├── config.yaml               # Main configuration
+├── pkg/
+│   ├── agent/                # AI agent core (planning, execution, recovery)
+│   ├── api/                  # HTTP handlers, WebSocket, server
+│   ├── aws/                  # AWS SDK client + S3 operations
+│   ├── contexture/           # SODA Contexture integration (OCS types, context builder)
+│   ├── discovery/            # Infrastructure scanner
+│   ├── tools/                # MCP tools (S3, Contexture, factory)
+│   └── types/                # Shared types
+├── settings/                 # Resource patterns, field mappings, prompt templates
+├── scripts/                  # Run and install scripts
+└── web/                      # React web dashboard
+```
 
 ## Safety Features
 
@@ -289,23 +250,23 @@ All operations can be run in "dry-run" mode first:
 - Maintains accurate infrastructure state
 - Detects drift from expected configuration
 
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-3. Run tests
-4. Commit: `git commit -m "Add feature"`
-5. Push: `git push origin feature-name`
-6. Create a Pull Request
-
-## Documentation
-
-- [AI Infrastructure Agent documentation](https://ai-agent.devopsvn.tech/docs.html#/)
-
 ## Troubleshooting
 
 ### Common Issues
+
+<details>
+<summary><strong>MinIO Connection Refused (port 9000)</strong></summary>
+
+```bash
+# Check if MinIO is running
+lsof -i :9000
+
+# Start MinIO if not running
+MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
+  minio server /tmp/minio-data --console-address ":9001"
+```
+
+</details>
 
 <details>
 <summary><strong>AWS Authentication Issues</strong></summary>
@@ -388,31 +349,19 @@ agent:
 
 - **API Keys**: Never commit API keys to version control
 - **AWS Permissions**: Use least-privilege IAM policies
+- **MinIO Credentials**: Change default minioadmin credentials in production
 - **Network Security**: Run in private networks when possible
 - **Audit Logging**: Enable comprehensive logging for compliance
 - **Dry Run**: Always test in dry-run mode first
 
-## Roadmap
+## Contributing
 
-### Current Version (v0.0.8 - PoC)
-- ✅ Basic natural language processing
-- ✅ Core AWS resource management
-- ✅ Web dashboard
-- ✅ MCP protocol support
-- ✅ ReAct Agent
-- ✅ Better UX/UI
-
-### Upcoming Features (v0.1.*)
-- 🔄 Cost optimization recommendations
-- 🔄 Enhanced conflict resolution
-- 🔄 Infrastructure templates
-- 🔄 Multi States
-- 🔄 Role-based access control
-
-## 🤝 Community & Support
-
-- **GitHub Issues**: [Report bugs and request features](https://github.com/VersusControl/ai-infrastructure-agent/issues)
-- **Discussions**: [Community discussions](https://github.com/VersusControl/ai-infrastructure-agent/discussions)
+1. Create a feature branch: `git checkout -b feature-name`
+2. Make your changes
+3. Run tests
+4. Commit: `git commit -m "Add feature"`
+5. Push: `git push origin feature-name`
+6. Create a Pull Request
 
 ## 📄 License
 
@@ -434,10 +383,10 @@ The authors are not responsible for any costs, data loss, or security issues tha
 
 <div align="center">
 
-**Built with ❤️ by the DevOps VN Team**
+**Built with ❤️ using SODA Contexture**
 
-*Empowering infrastructure management through AI*
+*Empowering infrastructure management through AI and enriched context*
 
-[⭐ Star this repo](https://github.com/VersusControl/ai-infrastructure-agent) | [🐛 Report Bug](https://github.com/VersusControl/ai-infrastructure-agent/issues) | [💡 Request Feature](https://github.com/VersusControl/ai-infrastructure-agent/issues)
+[⭐ Star this repo](https://github.com/Venksaiabhishek/S3-SODA-Contexture) | [🐛 Report Bug](https://github.com/Venksaiabhishek/S3-SODA-Contexture/issues) | [💡 Request Feature](https://github.com/Venksaiabhishek/S3-SODA-Contexture/issues)
 
 </div>
