@@ -1,15 +1,5 @@
 # S3-SODA-Contexture
 
-<h1 align="center" style="border-bottom: none">
-  <img alt="S3-SODA-Contexture" src="docs/images/ai-infrastructure-agent.svg" width="150" height="150">
-</h1>
-
-<div align="center">
-
-[![Go Version](https://img.shields.io/badge/Go-1.24.2+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/)
-[![AWS](https://img.shields.io/badge/AWS-Cloud-FF9900?style=for-the-badge&logo=amazon-aws)](https://aws.amazon.com/)
-[![MCP](https://img.shields.io/badge/Protocol-MCP-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
-[![SODA](https://img.shields.io/badge/SODA-Contexture-blue?style=for-the-badge)](https://sodafoundation.io/)
 
 *Intelligent AWS infrastructure and S3 storage management through natural language, powered by SODA Contexture*
 
